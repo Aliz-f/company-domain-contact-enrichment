@@ -1,0 +1,8 @@
+# Common UK public suffixes that appear in real company websites
+co.uk
+org.uk
+ac.uk
+gov.uk
+ltd.uk
+plc.uk
+me.uk

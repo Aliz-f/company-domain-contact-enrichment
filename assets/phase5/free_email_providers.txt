@@ -1,0 +1,18 @@
+# Free email providers. One domain per line (lowercase preferred).
+
+gmail.com
+googlemail.com
+yahoo.com
+yahoo.co.uk
+hotmail.com
+outlook.com
+live.com
+icloud.com
+me.com
+aol.com
+proton.me
+protonmail.com
+gmx.de
+gmx.net
+web.de
+mail.ru

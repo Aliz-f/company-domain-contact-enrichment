@@ -1,0 +1,5 @@
+# Global TLDs used when country is unknown (or as fallback)
+com
+net
+org
+biz

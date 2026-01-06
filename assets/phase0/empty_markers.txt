@@ -1,0 +1,9 @@
+n/a
+na
+none
+null
+unknown
+-
+--
+???
+?

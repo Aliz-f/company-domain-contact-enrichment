@@ -1,0 +1,14 @@
+# Reserved for later: role-based mailbox classification.
+
+info
+contact
+sales
+support
+help
+admin
+billing
+accounts
+jobs
+careers
+press
+media

@@ -1,0 +1,15 @@
+# One path per line. Must start with "/" (the loader will add it if missing).
+
+/
+contact
+about
+legal
+impressum
+imprint
+privacy
+terms
+
+# German variants
+kontakt
+ueber-uns
+uber-uns

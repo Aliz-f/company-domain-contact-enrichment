@@ -1,0 +1,20 @@
+# Keywords indicating parked / for-sale domains (case-insensitive)
+
+domain for sale
+this domain is for sale
+buy this domain
+purchase this domain
+inquire about this domain
+make an offer
+sedo
+afternic
+dan.com
+godaddy
+namecheap
+parking
+parked
+hugedomains
+uniregistry
+above.com
+name.com
+register this domain

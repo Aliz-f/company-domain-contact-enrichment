@@ -1,0 +1,15 @@
+# Hosts indicating directory / marketplace / aggregator redirects (reject)
+
+facebook.com
+linkedin.com
+google.com
+goo.gl
+maps.google
+yelp.
+yellowpages.
+companieshouse.
+opencorporates.
+bloomberg.com
+crunchbase.com
+dnb.com
+zoominfo.com

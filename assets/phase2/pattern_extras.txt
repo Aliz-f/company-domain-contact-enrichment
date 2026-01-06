@@ -1,0 +1,6 @@
+# Tokens used for pattern expansion:
+#   stem-<extra>.tld and stem<extra>.tld
+company
+group
+hq
+services

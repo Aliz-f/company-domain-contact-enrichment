@@ -1,0 +1,8 @@
+# Local parts to always drop (noreply-like).
+
+noreply
+no-reply
+donotreply
+do-not-reply
+mailer-daemon
+postmaster
