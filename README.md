@@ -2,18 +2,18 @@
 
 This project enriches Companies House style company records by:
 
-1. Cleaning and normalizing company names  
-2. Generating candidate domains deterministically  
-3. Validating domains with lightweight DNS + HTTP checks  
-4. Resolving to a single best domain (or marking ambiguity)  
-5. Crawling the resolved website to extract emails and phones  
-6. Optionally using AI to resolve ambiguous cases (with a strict usage cap)  
-7. Optionally post validating contacts  
+1. Cleaning and normalizing company names
+2. Generating candidate domains deterministically
+3. Validating domains with lightweight DNS + HTTP checks
+4. Resolving to a single best domain (or marking ambiguity)
+5. Crawling the resolved website to extract emails and phones
+6. Optionally using AI to resolve ambiguous cases (with a strict usage cap)
+7. Optionally post validating contacts
 8. Persisting final outputs and metrics (Phase 8)
 
 The pipeline is designed to be **retryable** and **idempotent**:
 
-- **Retryable:** you can rerun a single phase without rerunning earlier phases because each phase saves a checkpoint.
+- **Retryable:** rerun a single phase without rerunning earlier phases (checkpoints are saved per phase).
 - **Idempotent:** rerunning the same phase with the same inputs produces the same outputs.
 
 ---
@@ -45,8 +45,8 @@ This avoids the common bug where both Phase 8 and the runner try to write the sa
 - Crawling with strict limits and filtering to extract contact info
 - AI usage hard cap (default 30%) enforced in the runner
 - Phase 8 persistence + metrics with clear semantics:
-  - `status="success"` only when at least one email or phone exists
-  - `source="ai"` if `record.ai_used=True`, else `crawler` if contacts exist, else `none`
+    - `status="success"` only when at least one email or phone exists
+    - `source="ai"` if `record.ai_used=True`, else `crawler` if contacts exist, else `none`
 
 ---
 
@@ -91,8 +91,12 @@ This avoids the common bug where both Phase 8 and the runner try to write the sa
 ## Requirements
 
 * Conda (Miniconda or Anaconda)
-* Python version defined by your `environment.yml`
-* Network access for Phase 3, Phase 5 (DNS + HTTP), and Phase 6
+* Python version defined by `environment.yml`
+* Network access for:
+
+    * Phase 3 (DNS + HTTP)
+    * Phase 5 (crawling)
+    * Phase 6 (if AI is enabled)
 
 ---
 
@@ -104,10 +108,28 @@ This project uses a conda environment defined in `environment.yml`.
 
 ```bash
 conda env create -f environment.yml
+conda activate scrap
 ```
-### Activate the environment
+
+### Update the environment (later)
+
+```bash
+conda env update -f environment.yml --prune
+conda activate scrap
+```
+
+---
+
+## Quick Start
+
 ```bash
 conda activate scrap
+
+python pipeline_runner.py \
+  --input data/basic_company_data.csv \
+  --output-dir output \
+  --phase all \
+  --log-level INFO
 ```
 
 ---
@@ -136,6 +158,9 @@ AI_MODEL=...
 ```
 
 The runner tries to load `.env` if `python-dotenv` is installed.
+
+> Tip: If you want to fully disable AI, set `max_ai_fraction = 0.0` in config
+> or skip Phase 6 entirely when running specific phases.
 
 ---
 
@@ -179,7 +204,7 @@ python pipeline_runner.py \
 
 ### Start from a specific phase
 
-This requires `output/phase{start-1}.jsonl` to exist:
+Requires `output/phase{start-1}.jsonl` to exist:
 
 ```bash
 python pipeline_runner.py \
@@ -212,11 +237,11 @@ When running a single phase, the runner also writes:
 
 ### Checkpoints (retryability)
 
-After each phase, a checkpoint is saved:
+After each phase:
 
 * `output/phase{p}.jsonl`
 
-This stores a list of `Record` objects after that phase.
+This stores the list of `Record` objects after that phase.
 
 ### Final reporting outputs (Phase 8)
 
@@ -263,16 +288,14 @@ These are intentionally separate from Phase 8 outputs.
 
 ### Phase 2 — Candidate Domain Generation
 
-* Generates candidate domains using:
-
-    * TLD lists, UK public suffixes, ccTLD mapping, pattern extras
+* Generates candidate domains using TLD lists, UK public suffixes, ccTLD mapping, and pattern extras
 * Filters bad stems (`assets/phase2/bad_stems.txt`)
 * Produces deterministic ordering and applies caps
 
 ### Phase 3 — Fast Domain Validation
 
 * Sanitizes candidates
-* DNS resolution checks
+* DNS resolution checks (`dnspython`)
 * HTTP(S) probes with short timeouts
 * Parked domain detection (`assets/phase3/parked_keywords.txt`)
 * Directory host hints (`assets/phase3/directory_host_hints.txt`)
@@ -287,19 +310,16 @@ These are intentionally separate from Phase 8 outputs.
 
 * Crawls a limited set of target paths (`assets/phase5/target_paths.txt`)
 * Extracts emails and phones
-* Filters out:
-
-    * no-reply locals, role locals
-    * free email providers (`assets/phase5/free_email_providers.txt`)
+* Filters out no-reply locals, role locals, and free email providers
 * Stores results in `record.contacts`
 
-### Phase 6 — AI Resolve (Optional)
+### Phase 6 — AI Resolve
 
 * Runs only for ambiguous cases
 * Must respect AI usage cap (`cfg.max_ai_fraction`)
 * Sets `record.ai_used=True` when used
 
-### Phase 7 — Post validate (Optional)
+### Phase 7 — Post validate
 
 * Validates emails and phones depending on config
 * Stores results in `record.validated_contacts`
@@ -342,30 +362,21 @@ python pipeline_runner.py \
 
 ### Common issues
 
-* Too many requests or slow crawl
-  Reduce crawl paths, timeouts, and concurrency in `PipelineConfig`.
-
-* AI cap exceeded
-  The runner will raise an error if AI usage exceeds `cfg.max_ai_fraction`.
+* **Too many requests / slow crawl:** reduce crawl paths, timeouts, and concurrency in `PipelineConfig`.
+* **AI cap exceeded:** runner raises an error if AI usage exceeds `cfg.max_ai_fraction`.
 
 ---
 
-## Typical Workflow
+## Clean Restart
 
-1. Run on a small sample first (set `max_rows` in config):
+To restart from scratch, delete checkpoints:
 
 ```bash
-python pipeline_runner.py --input data/basic_company_data.csv --output-dir output --phase all --log-level INFO
+rm -f output/phase*.jsonl
 ```
 
-2. If a phase fails, fix it and rerun only that phase:
+(Optional) delete final outputs too:
 
 ```bash
-python pipeline_runner.py --input data/basic_company_data.csv --output-dir output --phase 3 --log-level DEBUG
-```
-
-3. If it stopped mid run:
-
-```bash
-python pipeline_runner.py --input data/basic_company_data.csv --output-dir output --phase all --resume --log-level INFO
+rm -f output/final_results.* output/metrics.json output/results.csv output/metrics_*.json
 ```
