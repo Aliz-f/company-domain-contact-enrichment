@@ -188,3 +188,4 @@ data/
 output/
 outputs/
 test.py
+.idea/
