@@ -1,0 +1,17 @@
+services:
+  pipeline:
+    build: .
+    container_name: company-enrichment
+    working_dir: /app
+    command: >
+      python pipeline_runner.py
+      --input /app/data/basic_company_data.csv
+      --output-dir /app/output
+      --phase all
+      --log-level INFO
+    volumes:
+      - ./:/app
+      - ./data:/app/data:ro
+      - ./output:/app/output
+    env_file:
+      - .env

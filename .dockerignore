@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual envs / conda
+.venv/
+venv/
+.env/
+.conda/
+miniconda*/
+anaconda*/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Project outputs (we mount output instead)
+output/
+*.log
+
+# Data (do NOT bake datasets into images)
+data/
+*.zip
+
+# Git
+.git/
+.gitignore
+
+test.py
+Scrap.pdf
