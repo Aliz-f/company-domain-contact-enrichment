@@ -13,8 +13,8 @@ This project enriches Companies House style company records by:
 
 The pipeline is designed to be **retryable** and **idempotent**:
 
-- **Retryable:** rerun a single phase without rerunning earlier phases (checkpoints are saved per phase).
-- **Idempotent:** rerunning the same phase with the same inputs produces the same outputs.
+* **Retryable:** rerun a single phase without rerunning earlier phases (checkpoints are saved per phase).
+* **Idempotent:** rerunning the same phase with the same inputs produces the same outputs.
 
 ---
 
@@ -22,16 +22,16 @@ The pipeline is designed to be **retryable** and **idempotent**:
 
 **Phase 8 is the single owner of final reporting files:**
 
-- `output/final_results.jsonl`
-- `output/final_results.csv`
-- `output/metrics.json`
+* `output/final_results.jsonl`
+* `output/final_results.csv`
+* `output/metrics.json`
 
 The runner also writes operational artifacts that do **not** collide with Phase 8:
 
-- `output/phase{p}.jsonl` checkpoints
-- `output/metrics_by_phase.json` (when running `--phase all`)
-- `output/metrics_phase{p}.json` (when running a single phase)
-- `output/results.csv` (runner flat CSV snapshot of the final `Record` list)
+* `output/phase{p}.jsonl` checkpoints
+* `output/metrics_by_phase.json` (when running `--phase all`)
+* `output/metrics_phase{p}.json` (when running a single phase)
+* `output/results.csv` (runner flat CSV snapshot of the final `Record` list)
 
 This avoids the common bug where both Phase 8 and the runner try to write the same filenames.
 
@@ -39,14 +39,15 @@ This avoids the common bug where both Phase 8 and the runner try to write the sa
 
 ## Features
 
-- 8-phase pipeline with deterministic behavior and checkpoints (`output/phase{p}.jsonl`)
-- Deterministic candidate generation and domain resolution
-- Fast validation using DNS + HTTP heuristics (parked/directory detection)
-- Crawling with strict limits and filtering to extract contact info
-- AI usage hard cap (default 30%) enforced in the runner
-- Phase 8 persistence + metrics with clear semantics:
-    - `status="success"` only when at least one email or phone exists
-    - `source="ai"` if `record.ai_used=True`, else `crawler` if contacts exist, else `none`
+* 8-phase pipeline with deterministic behavior and checkpoints (`output/phase{p}.jsonl`)
+* Deterministic candidate generation and domain resolution
+* Fast validation using DNS + HTTP heuristics (parked/directory detection)
+* Crawling with strict limits and filtering to extract contact info
+* AI usage hard cap (default 30%) enforced in the runner
+* Phase 8 persistence + metrics with clear semantics:
+
+    * `status="success"` only when at least one email or phone exists
+    * `source="ai"` if `record.ai_used=True`, else `crawler` if contacts exist, else `none`
 
 ---
 
@@ -84,13 +85,13 @@ This avoids the common bug where both Phase 8 and the runner try to write the sa
 ├── storage.py                        # CSV loader, JSONL checkpoint I/O, metrics writers
 ├── pipeline_runner.py                # Main entrypoint CLI
 └── test.py                           # local experiments / scratch
-````
+```
 
 ---
 
 ## Requirements
 
-* Conda (Miniconda or Anaconda)
+* Conda (Miniconda or Anaconda) **or** Docker (recommended for reproducibility)
 * Python version defined by `environment.yml`
 * Network access for:
 
@@ -134,6 +135,114 @@ python pipeline_runner.py \
 
 ---
 
+## Docker (Recommended)
+
+Docker runs the pipeline in an isolated environment and writes results to your **host** via volume mounts.
+This project includes:
+
+* `Dockerfile`
+* `docker-compose.yml`
+* `.dockerignore`
+
+### Why Docker here
+
+* No local Python/conda conflicts
+* Same runtime everywhere
+* Easy to mount large input data without copying into the image
+* Outputs always appear on your machine (not trapped inside the container)
+
+### Build + run (docker compose)
+
+From the repo root:
+
+```bash
+docker compose up --build
+```
+
+This runs the command configured in `docker-compose.yml` (typically `--phase all`).
+
+### Where outputs go
+
+`docker-compose.yml` mounts:
+
+* `./output` → `/app/output` inside the container
+
+So after the run, results are on your host in:
+
+```bash
+./output/final_results.jsonl
+./output/final_results.csv
+./output/metrics.json
+```
+
+### Use mounted data (avoid copying into the container)
+
+`docker-compose.yml` mounts:
+
+* `./data` → `/app/data:ro`
+
+That means you **do not** need to copy data into the image, and large files remain on the host.
+
+### Run with a different input file
+
+Put your CSV in `./data/` and update the compose command or run:
+
+```bash
+docker compose run --rm pipeline \
+  python pipeline_runner.py \
+  --input /app/data/your_file.csv \
+  --output-dir /app/output \
+  --phase all \
+  --log-level INFO
+```
+
+### Resume a stopped run
+
+Because checkpoints are written to the mounted `./output`, resume works across restarts:
+
+```bash
+docker compose run --rm pipeline \
+  python pipeline_runner.py \
+  --input /app/data/basic_company_data.csv \
+  --output-dir /app/output \
+  --phase all \
+  --resume \
+  --log-level INFO
+```
+
+### Run a single phase in Docker
+
+Example: run Phase 5 only (requires phase4 checkpoint in `./output`):
+
+```bash
+docker compose run --rm pipeline \
+  python pipeline_runner.py \
+  --input /app/data/basic_company_data.csv \
+  --output-dir /app/output \
+  --phase 5 \
+  --log-level INFO
+```
+
+### AI keys in Docker (`.env`)
+
+If Phase 6 uses an AI provider, create a `.env` file in the project root:
+
+```text
+AI_API_KEY=...
+AI_MODEL=...
+```
+
+Then enable this in `docker-compose.yml`:
+
+```yaml
+env_file:
+  - .env
+```
+
+> Tip: If you want to fully disable AI, set `max_ai_fraction = 0.0` in config or skip Phase 6.
+
+---
+
 ## Configuration
 
 ### `config.py`
@@ -158,9 +267,6 @@ AI_MODEL=...
 ```
 
 The runner tries to load `.env` if `python-dotenv` is installed.
-
-> Tip: If you want to fully disable AI, set `max_ai_fraction = 0.0` in config
-> or skip Phase 6 entirely when running specific phases.
 
 ---
 
@@ -241,35 +347,18 @@ After each phase:
 
 * `output/phase{p}.jsonl`
 
-This stores the list of `Record` objects after that phase.
-
 ### Final reporting outputs (Phase 8)
 
 Phase 8 writes:
 
 * `output/final_results.jsonl`
-  One JSON object per record with:
-  `company_id, company_name, website, emails, phone, status, source`
-
 * `output/final_results.csv`
-  Flat CSV where emails are joined with `; `
-
 * `output/metrics.json`
-  Includes:
-
-    * `success_rate`
-    * `ai_usage_rate` (based on explicit `record.ai_used`)
-    * `avg_latency_per_phase_s` (from `record.debug["phaseX_latency_s"]`)
-    * `status_counts`, `source_counts`
 
 ### Runner outputs (operational)
 
-The runner may also write:
-
-* `output/metrics_by_phase.json` (all phases timing + counts)
-* `output/results.csv` (flat dump of `Record` state)
-
-These are intentionally separate from Phase 8 outputs.
+* `output/metrics_by_phase.json`
+* `output/results.csv`
 
 ---
 
@@ -277,58 +366,23 @@ These are intentionally separate from Phase 8 outputs.
 
 ### Phase 0 — Filter / Tag
 
-* Loads raw records from CSV
-* Drops dummy or empty names using `assets/phase0/*`
-* Initializes tags and debug
-
 ### Phase 1 — Normalize Company Name
-
-* Strips legal suffixes (`assets/phase1/legal_suffixes.txt`)
-* Generates normalized name tokens
 
 ### Phase 2 — Candidate Domain Generation
 
-* Generates candidate domains using TLD lists, UK public suffixes, ccTLD mapping, and pattern extras
-* Filters bad stems (`assets/phase2/bad_stems.txt`)
-* Produces deterministic ordering and applies caps
-
 ### Phase 3 — Fast Domain Validation
-
-* Sanitizes candidates
-* DNS resolution checks (`dnspython`)
-* HTTP(S) probes with short timeouts
-* Parked domain detection (`assets/phase3/parked_keywords.txt`)
-* Directory host hints (`assets/phase3/directory_host_hints.txt`)
-* Outputs `valid_domains`
 
 ### Phase 4 — Deterministic Resolution
 
-* Picks a single resolved domain when confident
-* Otherwise marks ambiguity and preserves candidates for AI
-
 ### Phase 5 — Crawl for Contacts
-
-* Crawls a limited set of target paths (`assets/phase5/target_paths.txt`)
-* Extracts emails and phones
-* Filters out no-reply locals, role locals, and free email providers
-* Stores results in `record.contacts`
 
 ### Phase 6 — AI Resolve
 
-* Runs only for ambiguous cases
-* Must respect AI usage cap (`cfg.max_ai_fraction`)
-* Sets `record.ai_used=True` when used
-
 ### Phase 7 — Post validate
-
-* Validates emails and phones depending on config
-* Stores results in `record.validated_contacts`
 
 ### Phase 8 — Persist + Metrics
 
-* Writes `final_results.jsonl`, optional CSV and compact JSON
-* Writes `metrics.json`
-* Defines final reporting semantics for `status` and `source`
+(See per-phase READMEs in `phases/phaseX/README.md` for details.)
 
 ---
 
@@ -369,7 +423,7 @@ python pipeline_runner.py \
 
 ## Clean Restart
 
-To restart from scratch, delete checkpoints:
+Delete checkpoints:
 
 ```bash
 rm -f output/phase*.jsonl
